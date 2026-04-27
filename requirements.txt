@@ -6,13 +6,13 @@ gunicorn==21.2.0
 opencv-python-headless==4.8.0.76
 torch==2.5.0+cpu
 torchvision==0.22.0+cpu
-numpy==1.26.4
+numpy==2.1.0
 Pillow==10.0.0
-ultralytics==8.0.147
+ultralytics==8.3.0
 cloudinary==1.33.0
 firebase-admin==6.2.0
 requests==2.31.0
 python-dotenv==1.0.0
-scikit-image==0.21.0
-matplotlib==3.7.2
+scikit-image==0.24.0
+matplotlib==3.9.0
 werkzeug==2.3.7
