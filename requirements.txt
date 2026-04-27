@@ -5,7 +5,7 @@ flask-cors==4.0.0
 gunicorn==21.2.0
 opencv-python-headless==4.8.0.76
 torch==2.5.0+cpu
-torchvision==0.20.0+cpu
+torchvision==0.21.0+cpu
 numpy==1.24.3
 Pillow==10.0.0
 ultralytics==8.0.147
