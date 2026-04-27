@@ -1,77 +1,79 @@
-# Virtual Environment
-venv/
-env/
-ENV/
-
-# Python Cache
+# ===== Python =====
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
 
-# Environment Variables
+# ===== Replit-managed (jangan commit, di-install ulang oleh hosting) =====
+.pythonlibs/
+.upm/
+.cache/
+.local/
+.replit
+replit.nix
+
+# ===== Environment & secrets =====
 .env
 .env.local
 firebase-credentials.json
 firebase-*.json
+!firebase-template.json
 
-# IDE
+# ===== IDE / OS =====
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
-
-# OS
 .DS_Store
 Thumbs.db
 
-# Uploads & Temporary Files
+# ===== Files yang DIBUAT runtime, jangan di-commit =====
 uploads/*
 !uploads/.gitkeep
-
-# Trained Models & Weights (SANGAT BESAR - jangan commit!)
-trained_models/
-yolov5nu.pt
-*.pt
-*.onnx
-*.pth
-!trained_models/.gitkeep
-
-# YOLOv5 Clone
-yolov5/
-!yolov5/.gitkeep
-
-# Dataset
-datasets/images/train/*
-datasets/images/val/*
-datasets/images/test/*
-datasets/labels/train/*
-datasets/labels/val/*
-datasets/labels/test/*
-
-# Logs
 *.log
-
-# Railway specific
-.railway/
-
-# Test Results
-test_results/
 logs/
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-
-# Distribution
-dist/
-build/
-*.egg-info/
-
-datasets/
+# ===== Dataset training (1.3 GB!) — TIDAK BUTUH di server =====
 datasets/raw/
-datasets/coco8/
+datasets/images/
 datasets/labels/
+datasets/coco8/
+datasets/*.cache
+
+# ===== File besar lain yang tidak butuh di server =====
+attached_assets/
+mobile_fixes/
+test_results/
+yolov5/runs/
+yolov5/.git/
+yolov5nu.pt
+
+# ===== Model weights — secara default jangan commit, KECUALI best.pt =====
+# ===== Model weights =====
+
+# ignore semua model
+*.pt
+*.pth
+*.onnx
+
+# tapi izinkan folder model tertentu
+!trained_models/
+!trained_models/banana_detection_v1/
+!trained_models/banana_detection_v1/weights/
+
+# dan izinkan file model utama
+!trained_models/banana_detection_v1/weights/best.pt
+
+# ===== Railway-specific =====
+.railway/
