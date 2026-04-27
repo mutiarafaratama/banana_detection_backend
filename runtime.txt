@@ -1,0 +1,5 @@
+"""
+Railway runtime configuration
+Specify Python version untuk Railway platform
+"""
+3.11.0

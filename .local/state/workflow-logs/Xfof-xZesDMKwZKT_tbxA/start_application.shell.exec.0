@@ -1,0 +1,56 @@
+✅ Folders created: /home/runner/workspace/uploads, /home/runner/workspace/trained_models
+✅ API blueprints registered
+✅ Flask app created successfully
+🍌 Banana Detection Backend
+🚀 Server running on http://0.0.0.0:5000
+📝 Environment: production
+⚙️  Debug mode: False
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.31.69.2:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [24/Apr/2026 16:18:24] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [24/Apr/2026 16:38:24] "GET / HTTP/1.1" 200 -
+🔄 Loading YOLOv5 model from: /home/runner/workspace/trained_models/banana_detection_v1/weights/best.pt
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/ultralytics/utils/checks.py:17: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+  import pkg_resources as pkg
+✅ Model loaded successfully!
+   - Default confidence threshold: 0.5
+   - Default IOU threshold: 0.45
+   - Classes: ['Mentah', 'Matang', 'Busuk']
+✅ Firebase initialized successfully!
+127.0.0.1 - - [24/Apr/2026 16:52:14] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [24/Apr/2026 16:53:12] "POST /api/predict HTTP/1.1" 200 -
+/home/runner/workspace/.pythonlibs/lib/python3.11/site-packages/google/cloud/firestore_v1/base_collection.py:317: UserWarning: Detected filter using positional arguments. Prefer using the 'filter' keyword argument instead.
+  return query.where(field_path, op_string, value)
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 16:54:01] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 16:54:04] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+127.0.0.1 - - [24/Apr/2026 16:54:58] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [24/Apr/2026 16:55:36] "POST /api/predict HTTP/1.1" 200 -
+127.0.0.1 - - [24/Apr/2026 17:02:06] "POST /api/predict HTTP/1.1" 200 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:02:43] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+127.0.0.1 - - [24/Apr/2026 17:09:05] "POST /api/detect-live HTTP/1.1" 200 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:32:06] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:33:13] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:33:14] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:41:40] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:47:35] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:47:37] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 17:47:57] "[35m[1mGET /api/history?mine=1&limit=20 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 18:00:42] "[35m[1mGET /api/history?mine=1&limit=10 HTTP/1.1[0m" 500 -
+❌ Firebase get error: 400 The query requires an index. You can create it here: https://console.firebase.google.com/v1/r/project/detectbanana/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9kZXRlY3RiYW5hbmEvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2RldGVjdGlvbnMvaW5kZXhlcy9fEAEaDQoJZGV2aWNlX2lkEAEaDQoJdGltZXN0YW1wEAIaDAoIX19uYW1lX18QAg
+127.0.0.1 - - [24/Apr/2026 18:00:44] "[35m[1mGET /api/history?mine=1&limit=10 HTTP/1.1[0m" 500 -

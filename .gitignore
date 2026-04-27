@@ -1,0 +1,77 @@
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment Variables
+.env
+.env.local
+firebase-credentials.json
+firebase-*.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads & Temporary Files
+uploads/*
+!uploads/.gitkeep
+
+# Trained Models & Weights (SANGAT BESAR - jangan commit!)
+trained_models/
+yolov5nu.pt
+*.pt
+*.onnx
+*.pth
+!trained_models/.gitkeep
+
+# YOLOv5 Clone
+yolov5/
+!yolov5/.gitkeep
+
+# Dataset
+datasets/images/train/*
+datasets/images/val/*
+datasets/images/test/*
+datasets/labels/train/*
+datasets/labels/val/*
+datasets/labels/test/*
+
+# Logs
+*.log
+
+# Railway specific
+.railway/
+
+# Test Results
+test_results/
+logs/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Distribution
+dist/
+build/
+*.egg-info/
+
+datasets/
+datasets/raw/
+datasets/coco8/
+datasets/labels/
