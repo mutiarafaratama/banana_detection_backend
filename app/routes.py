@@ -210,10 +210,21 @@ def _build_response(detections, inference_ms, source, image_url, firebase_doc_id
 
 
 def _persist(detections, summary, inference_ms, image_url, source, device_id, extras=None, image_shape=None):
-    """Save detection event in Firestore + bump aggregated stats. Returns doc_id or None."""
+    """Save detection event in Firestore. Returns the new doc_id, or None.
+
+    NOTE: We intentionally do NOT bump the legacy aggregated counters
+    (`StatsService.record_detection`) anymore. The analytics endpoints
+    now compute everything on demand from the saved `detections`
+    documents — see `StatsService.get_today_from_detections` /
+    `StatsService.get_daily_from_detections`. That guarantees the
+    dashboard reflects what's actually persisted, instead of being
+    inflated by every live-camera frame the client streams through
+    `/api/detect-live` with `save=false`.
+    """
     if not image_url:
-        # No upload happened (Cloudinary disabled or save=false). Still bump stats.
-        StatsService.record_detection(detections, inference_ms, source, device_id=device_id)
+        # No upload happened (Cloudinary disabled or save=false).
+        # Nothing to persist → analytics will simply not include this
+        # event, which is the desired behavior.
         return None
 
     image_size = None
@@ -236,7 +247,6 @@ def _persist(detections, summary, inference_ms, image_url, source, device_id, ex
         payload.update(extras)
 
     save_result = FirebaseService.save_detection(payload)
-    StatsService.record_detection(detections, inference_ms, source, device_id=device_id)
     return save_result.get('doc_id') if save_result.get('success') else None
 
 
@@ -303,9 +313,10 @@ def predict():
                     extras={'filename': file.filename},
                     image_shape=result.get('image_shape'),
                 )
-        else:
-            # Always update stats even when not persisting the image
-            StatsService.record_detection(detections, inference_ms, 'upload', device_id=device_id)
+        # When `save=false` (or Firebase isn't configured) we deliberately
+        # skip persisting and skip touching analytics counters. The
+        # dashboard is now derived from the `detections` collection, so
+        # nothing should be counted unless it actually got saved.
 
         return jsonify(_build_response(
             detections, inference_ms, 'upload', image_url, firebase_doc_id,
@@ -404,8 +415,9 @@ def detect_live():
                     'live_camera', device_id,
                     image_shape=result.get('image_shape'),
                 )
-        else:
-            StatsService.record_detection(detections, inference_ms, 'live_camera', device_id=device_id)
+        # Live-camera frames with `save=false` are intentionally not
+        # counted in analytics — only frames that the user explicitly
+        # saves to the database show up in the dashboard.
 
         return jsonify(_build_response(
             detections, inference_ms, 'live_camera', image_url, firebase_doc_id,
@@ -542,17 +554,31 @@ def delete_history(doc_id):
 
 @api_bp.route('/stats', methods=['GET'])
 def get_stats():
-    stats = StatsService.get_global()
+    """
+    Dashboard statistik HARI INI (WIB) — dihitung langsung dari koleksi
+    `detections` di Firestore, bukan dari counter agregat. Ini menjamin
+    angka selalu sesuai isi database (tidak membengkak karena live frame
+    yang tidak disimpan).
+
+    Field `stats`:
+      events_total          → jumlah deteksi yang TERSIMPAN hari ini
+                              ("Total Deteksi" di mobile)
+      detections_total      → total bbox pisang dari deteksi hari ini
+                              ("Pisang Ditemukan" di mobile)
+      detections_by_class   → komposisi kelas (Mentah/Matang/Busuk) hari ini
+      events_by_source      → upload vs live_camera (yang tersimpan)
+      avg_confidence, avg_inference_ms, ... (turunan)
+    """
     device_id = get_device_id()
-    
-    # Gunakan statistik device jika device_id ada, jika tidak fallback ke global
-    stats = StatsService.get_device_stats(device_id) if device_id else StatsService.get_global()
-    
-    # Calculate dataset counts dynamically
+
+    # Dashboard sekarang selalu fokus pada device pemanggil; tidak ada
+    # fallback "global" karena angka all-time bukan yang ingin
+    # ditampilkan di mobile.
+    stats = StatsService.get_today_from_detections(device_id)
+
+    # Dataset & model performance info (statis, dari training)
     dataset_counts = count_dataset_images()
     total_images = sum(dataset_counts.values())
-    
-    # Static model performance and dataset info (based on training results)
     model_info = {
         'version': 'v1.0.0 (YOLOv5)',
         'accuracy_metrics': {
@@ -566,27 +592,33 @@ def get_stats():
         }
     }
 
-    if stats is None:
-        return jsonify({
-            'status': 'success',
-            'stats': StatsService._empty_stats(),
-            'model_info': model_info,
-            'note': 'Firebase not configured — returning empty stats.',
-        }), 200
-
-    return jsonify({
-        'status': 'success', 
+    response = {
+        'status': 'success',
         'stats': stats,
-        'model_info': model_info
-    }), 200
+        'model_info': model_info,
+        # Tambahan kecil untuk klien Android: tegaskan periode datanya
+        'period': 'today',
+        'timezone': 'Asia/Jakarta (UTC+7)',
+    }
+    if not FirebaseService.is_available():
+        response['note'] = 'Firebase not configured — returning empty stats.'
+    return jsonify(response), 200
 
 
 @api_bp.route('/stats/daily', methods=['GET'])
 def get_daily_stats():
+    """
+    Tren deteksi per-hari (WIB), dihitung langsung dari `detections`.
+    Default 7 hari (sesuai chart "Tren Deteksi (7 Hari)" di mobile).
+    """
     days = parse_int(request.args.get('days'), 7)
     days = max(1, min(days, 60))
-    
+
     device_id = get_device_id()
-    # Load daily stats berdasarkan device (jika dikirim header device-nya)
-    daily = StatsService.get_daily(days=days, device_id=device_id)
-    return jsonify({'status': 'success', 'days': days, 'daily': daily}), 200
+    daily = StatsService.get_daily_from_detections(device_id, days=days)
+    return jsonify({
+        'status': 'success',
+        'days': days,
+        'timezone': 'Asia/Jakarta (UTC+7)',
+        'daily': daily,
+    }), 200
