@@ -177,25 +177,47 @@ class StatsService:
 
     @classmethod
     def get_daily(cls, days=7, device_id=None):
-        """Read the most recent N daily stat documents (newest first)."""
+        """Return exactly `days` daily stat entries (oldest → newest).
+
+        Hari yang belum ada dokumen di Firestore otomatis di-fill dengan
+        zero-stats supaya chart "Tren N Hari" di mobile selalu menampilkan
+        semua hari, meski hari ini belum ada deteksi.
+        """
+        from datetime import timedelta
+
+        # 1) Build daftar tanggal: today UTC mundur (days-1) hari, oldest first
+        today = datetime.now(timezone.utc).date()
+        date_range = [
+            (today - timedelta(days=i)).strftime('%Y-%m-%d')
+            for i in range(days - 1, -1, -1)
+        ]
+
         db = cls._firestore()
         if db is None:
-            return []
-        try:
-            if device_id:
-                query = db.collection('stats_device').document(device_id).collection('daily')
-            else:
-                query = db.collection(cls.DAILY_COLLECTION)
-                
-            docs = (
-                query.order_by('date', direction='DESCENDING')
-                .limit(days)
-                .stream()
-            )
-            return [cls._derive(d.to_dict()) for d in docs]
-        except Exception as e:
-            print(f"⚠️  Daily stats read failed: {e}")
-            return []
+            # Tetap return 7 entry kosong supaya chart konsisten
+            return [{**cls._empty_stats(), 'date': d} for d in date_range]
+
+        if device_id:
+            collection = db.collection('stats_device').document(device_id).collection('daily')
+        else:
+            collection = db.collection(cls.DAILY_COLLECTION)
+
+        # 2) Fetch tiap dokumen by ID (efisien — N reads, max 60)
+        result = []
+        for date_str in date_range:
+            try:
+                doc = collection.document(date_str).get()
+                if doc.exists:
+                    data = doc.to_dict() or {}
+                    data['date'] = date_str
+                    result.append(cls._derive(data))
+                else:
+                    result.append({**cls._empty_stats(), 'date': date_str})
+            except Exception as e:
+                print(f"⚠️  Daily stats read failed for {date_str}: {e}")
+                result.append({**cls._empty_stats(), 'date': date_str})
+
+        return result
 
     @staticmethod
     def _unflatten(data):
