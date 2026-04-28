@@ -37,13 +37,10 @@ def create_app(config_class=Config):
     except Exception as e:
         print(f"⚠️  Warning creating folders: {str(e)}")
     
-    # Register blueprints/routes
-    try:
-        from app.routes import api_bp
-        app.register_blueprint(api_bp, url_prefix='/api')
-        print("✅ API blueprints registered")
-    except Exception as e:
-        print(f"⚠️  Warning registering blueprints: {str(e)}")
+   # Register blueprints/routes
+    from app.routes import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+    print("✅ API blueprints registered")
     
     # Health check endpoint
     @app.route('/')
