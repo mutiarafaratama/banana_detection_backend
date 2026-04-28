@@ -10,8 +10,12 @@ Documents:
     stats_daily/{YYYY-MM-DD}   -> totals per day
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta, date as date_cls
 from app.services.firebase_service import FirebaseService
+
+# Local timezone for "hari ini" / per-day bucketing.
+# Indonesian app → Western Indonesia Time (WIB, UTC+7).
+LOCAL_TZ = timezone(timedelta(hours=7))
 
 
 class StatsService:
@@ -285,9 +289,185 @@ class StatsService:
     def _empty_stats():
         return {
             'events_total': 0,
+            'events_with_detections': 0,
             'detections_total': 0,
             'detections_by_class': {},
             'events_by_source': {},
+            'sum_confidence_by_class': {},
             'avg_inference_ms': 0,
             'avg_confidence': 0,
+            'avg_confidence_by_class': {},
+            'avg_detections_per_event': 0,
+            'detection_success_rate': 0,
+            'empty_events': 0,
         }
+
+    # =====================================================================
+    # NEW: Analytics computed directly from saved `detections` documents.
+    #
+    # Why: the legacy counter-based approach above bumps the counters on
+    # every `/api/predict` and `/api/detect-live` call — including live
+    # camera frames that are NOT saved. That's why the dashboard numbers
+    # were "ballooning" (789 / 567 in the screenshots) even though the
+    # user had only persisted a handful of detections.
+    #
+    # The methods below scan the actual stored detection events for the
+    # caller's device and compute the same shape on demand. This guarantees
+    # the dashboard always reflects what's in the database.
+    # =====================================================================
+
+    @classmethod
+    def _doc_local_date(cls, doc):
+        """
+        Return the local (WIB) calendar date of a saved detection doc.
+
+        Prefers the Firestore `timestamp` field (ISO string after fetch);
+        falls back to `created_at` (also ISO). Returns None if neither
+        parseable.
+        """
+        for key in ('timestamp', 'created_at'):
+            val = doc.get(key)
+            if not val:
+                continue
+            if isinstance(val, str):
+                try:
+                    dt = datetime.fromisoformat(val.replace('Z', '+00:00'))
+                except Exception:
+                    continue
+                if dt.tzinfo is None:
+                    # Saved as naive UTC (datetime.utcnow().isoformat()).
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt.astimezone(LOCAL_TZ).date()
+            if hasattr(val, 'astimezone'):
+                try:
+                    return val.astimezone(LOCAL_TZ).date()
+                except Exception:
+                    continue
+        return None
+
+    @staticmethod
+    def _aggregate_docs(docs, date_str=None):
+        """Compute the analytics shape from a list of saved detection docs."""
+        events_total = len(docs)
+        events_with_det = 0
+        detections_total = 0
+        by_class = {}
+        sum_conf_by_class = {}
+        by_source = {}
+        sum_inference_ms = 0.0
+        sum_confidence = 0.0  # weighted by per-event count
+
+        for d in docs:
+            # `count` is the number of bbox detections in that event
+            count = int(d.get('count') or 0)
+            detections_total += count
+            if count > 0:
+                events_with_det += 1
+
+            sum_inference_ms += float(d.get('inference_time_ms') or 0)
+
+            # Aggregate per-class composition from the detections array
+            inner = d.get('detections') or []
+            if inner:
+                for det in inner:
+                    cname = det.get('class', 'Unknown')
+                    by_class[cname] = by_class.get(cname, 0) + 1
+                    conf = float(det.get('confidence') or 0)
+                    sum_conf_by_class[cname] = (
+                        sum_conf_by_class.get(cname, 0) + conf
+                    )
+                    sum_confidence += conf
+
+            # Source breakdown (upload vs live_camera)
+            src = d.get('source') or 'upload'
+            by_source[src] = by_source.get(src, 0) + 1
+
+        avg_conf_by_class = {
+            c: round(sum_conf_by_class[c] / n, 3) if n else 0
+            for c, n in by_class.items()
+        }
+
+        out = {
+            'events_total': events_total,
+            'events_with_detections': events_with_det,
+            'detections_total': detections_total,
+            'detections_by_class': by_class,
+            'events_by_source': by_source,
+            'sum_confidence_by_class': sum_conf_by_class,
+            'avg_inference_ms': (
+                round(sum_inference_ms / events_total, 1) if events_total else 0
+            ),
+            'avg_confidence': (
+                round(sum_confidence / detections_total, 3) if detections_total else 0
+            ),
+            'avg_confidence_by_class': avg_conf_by_class,
+            'avg_detections_per_event': (
+                round(detections_total / events_total, 2) if events_total else 0
+            ),
+            'detection_success_rate': (
+                round(events_with_det / events_total, 3) if events_total else 0
+            ),
+            'empty_events': max(0, events_total - events_with_det),
+        }
+        if date_str is not None:
+            out['date'] = date_str
+        return out
+
+    @classmethod
+    def get_today_from_detections(cls, device_id):
+        """
+        Compute TODAY's stats (WIB) for `device_id` from the saved
+        detection documents. Returns the same shape as `_aggregate_docs`.
+
+        When Firebase isn't configured or no device_id provided, returns
+        empty stats (so the mobile dashboard still renders).
+        """
+        today_local = datetime.now(LOCAL_TZ).date()
+        empty = {**cls._empty_stats(), 'date': today_local.strftime('%Y-%m-%d')}
+
+        if not device_id or not FirebaseService.is_available():
+            return empty
+
+        all_docs = FirebaseService.get_device_detections_raw(device_id)
+        today_docs = [
+            d for d in all_docs
+            if cls._doc_local_date(d) == today_local
+        ]
+        return cls._aggregate_docs(
+            today_docs, date_str=today_local.strftime('%Y-%m-%d')
+        )
+
+    @classmethod
+    def get_daily_from_detections(cls, device_id, days=7):
+        """
+        Return `days` per-day stat entries (oldest → newest, WIB) for
+        `device_id`, computed from the saved detection documents.
+
+        Days with no saved detection get a zero-filled entry so the
+        mobile chart always shows a full N-day range.
+        """
+        today_local = datetime.now(LOCAL_TZ).date()
+        date_range = [
+            today_local - timedelta(days=i)
+            for i in range(days - 1, -1, -1)
+        ]
+
+        if not device_id or not FirebaseService.is_available():
+            return [
+                {**cls._empty_stats(), 'date': d.strftime('%Y-%m-%d')}
+                for d in date_range
+            ]
+
+        all_docs = FirebaseService.get_device_detections_raw(device_id)
+
+        # Bucket each doc by its local (WIB) date.
+        buckets = {d: [] for d in date_range}
+        for doc in all_docs:
+            d_local = cls._doc_local_date(doc)
+            if d_local in buckets:
+                buckets[d_local].append(doc)
+
+        return [
+            cls._aggregate_docs(buckets[d], date_str=d.strftime('%Y-%m-%d'))
+            for d in date_range
+        ]
