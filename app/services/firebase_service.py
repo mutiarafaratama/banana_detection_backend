@@ -188,6 +188,49 @@ class FirebaseService:
             return {'success': False, 'error': str(e), 'detections': []}
 
     @classmethod
+    def get_device_detections_raw(cls, device_id, max_docs=5000):
+        """
+        Fetch ALL saved detection documents for a device (newest first).
+
+        Used by the analytics endpoints to compute stats directly from the
+        actual stored data (instead of from incremental counters that can
+        drift / double-count when live-camera streaming is in play).
+
+        Args:
+            device_id: device identifier (required for analytics scoping)
+            max_docs:  hard cap to keep memory + Firestore reads bounded
+
+        Returns:
+            list[dict] — each dict is the saved detection document with
+            its `id`, `timestamp` (ISO string), `count`, `detections`,
+            `source`, `inference_time_ms`, etc.
+        """
+        if not cls.is_available() or not device_id:
+            return []
+
+        try:
+            # Single-field filter on device_id does NOT need a composite
+            # index. We sort + filter by date in Python to keep this
+            # zero-config for end users.
+            query = (
+                cls._db.collection('detections')
+                .where('device_id', '==', device_id)
+                .limit(int(max_docs))
+            )
+            items = []
+            for doc in query.stream():
+                data = doc.to_dict() or {}
+                data['id'] = doc.id
+                ts = data.get('timestamp')
+                if hasattr(ts, 'isoformat'):
+                    data['timestamp'] = ts.isoformat()
+                items.append(data)
+            return items
+        except Exception as e:
+            print(f"❌ Firebase device-detections fetch failed: {e}")
+            return []
+
+    @classmethod
     def delete_detection(cls, doc_id):
         if not cls.is_available():
             return {'success': False, 'error': 'firebase_not_configured'}
