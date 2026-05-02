@@ -1,0 +1,10 @@
+train: /content/dataset/train/images
+val: /content/dataset/val/images
+
+nc: 4
+
+names:
+  0: mentah
+  1: mengkal
+  2: matang
+  3: busuk

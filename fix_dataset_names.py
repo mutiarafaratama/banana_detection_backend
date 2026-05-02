@@ -2,33 +2,43 @@
 Script untuk menyinkronkan nama file images dan labels dari export Label Studio (YOLO format).
 
 Masalah:
-  - Label Studio menambahkan UUID prefix pada file label: 74eaf18c_ef0a5cb9-000001_2.txt
+  - Label Studio menambahkan UUID prefix (double underscore) pada file label:
+      74eaf18c__ef0a5cb9-000001_2.txt
   - Image masih nama asli dengan spasi/kurung: 000001 (2).jpg
+    ATAU image sudah pakai nama asli (tidak di-rename manual)
 
 Solusi:
-  - Rename images: normalisasi nama (spasi & kurung -> underscore)
-  - Rename labels: hapus UUID prefix, sisakan nama yang sudah dinormalisasi
+  - Strip UUID prefix dari nama label
+  - Normalisasi nama image (spasi & kurung -> underscore)
+  - Verifikasi berapa pasang yang cocok
+
+CATATAN PENTING:
+  Pastikan folder images yang kamu pakai adalah gambar yang di-export dari
+  Label Studio (bukan yang di-rename manual ke 000001, 000002, dst).
+  Kalau gambar sudah di-rename manual, nama image dan label tidak akan bisa
+  dicocokkan secara otomatis.
 
 Cara pakai:
-  1. Setel IMAGES_DIR dan LABELS_DIR di bawah sesuai lokasi foldermu
+  1. Setel IMAGES_DIR dan LABELS_DIR di bawah
   2. Jalankan: python fix_dataset_names.py
-     -> Ini akan DRY RUN (preview saja, tidak mengubah file)
+     -> DRY RUN (preview saja, tidak mengubah file)
   3. Jika hasilnya sudah sesuai, ubah DRY_RUN = False lalu jalankan lagi
 """
 
 import os
 import re
 import shutil
+from pathlib import Path
 
 # ============================================================
 # KONFIGURASI - sesuaikan path di bawah ini
 # ============================================================
 IMAGES_DIR = r"D:\banana_dataset\images"
 LABELS_DIR = r"D:\banana_dataset\labels"
+OUTPUT_DIR = r"D:\banana_dataset_fixed"   # folder output bersih (boleh sama dg input)
 
-DRY_RUN = True  # True = preview saja | False = benar-benar rename file
+DRY_RUN = True   # True = preview saja | False = benar-benar rename file
 # ============================================================
-
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -36,216 +46,210 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 def normalize_stem(stem: str) -> str:
     """
     Normalisasi nama file (tanpa ekstensi):
-      - Spasi -> underscore
-      - Kurung buka/tutup dihapus: '(2)' -> '2'  tapi umumnya sudah jadi '_2'
-      - Tanda hubung berlebih / underscore ganda dibersihkan
-    Contoh: '000001 (2)' -> '000001_2'
+      '000001 (2)' -> '000001_2'
+      'IMG 20260430 (3)' -> 'IMG_20260430_3'
     """
-    # Ganti spasi dengan underscore
     stem = stem.replace(" ", "_")
-    # Hapus karakter kurung
     stem = stem.replace("(", "").replace(")", "")
-    # Hapus underscore berlebih
     stem = re.sub(r"_+", "_", stem)
-    # Hilangkan underscore di awal/akhir
-    stem = stem.strip("_")
-    return stem
+    return stem.strip("_")
 
 
 def strip_uuid_prefix(stem: str) -> str:
     """
-    Hapus UUID prefix yang ditambahkan Label Studio.
-    Pola: {hex}-{hex}-{hex}-{hex}-{hex}-{nama_asli}
-          atau {hex8}_{hex8}-{nama_asli}
+    Hapus UUID prefix dari nama label Label Studio.
 
-    Label Studio memakai format: xxxxxxxx_xxxxxxxx-nama_asli
-    Contoh: '74eaf18c_ef0a5cb9-000001_2' -> '000001_2'
+    Pola 1 (double underscore): xxxxxxxx__xxxxxxxx-nama_asli
+    Pola 2 (single underscore): xxxxxxxx_xxxxxxxx-nama_asli
+    Pola 3 (standard UUID):     xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx-nama_asli
 
-    Strategi: cari tanda '-' terakhir yang sebelumnya adalah karakter hex,
-    lalu ambil bagian setelahnya sebagai nama asli.
+    Contoh:
+      '74eaf18c__ef0a5cb9-000001_2'     -> '000001_2'
+      '002da5db__c819c789-green_banana'  -> 'green_banana'
     """
-    # Pola UUID Label Studio: 8hex_8hex- di awal
-    pattern = r"^[0-9a-f]{8}_[0-9a-f]{8}-(.+)$"
-    match = re.match(pattern, stem, re.IGNORECASE)
-    if match:
-        return match.group(1)
+    # Pola double underscore (Label Studio terbaru)
+    m = re.match(r'^[0-9a-f]+__[0-9a-f]+-(.+)$', stem, re.IGNORECASE)
+    if m:
+        return m.group(1)
 
-    # Fallback: split di '-' pertama dan ambil sisanya
-    # (untuk format UUID yang lebih panjang seperti standard UUID)
-    parts = stem.split("-")
-    if len(parts) > 1:
-        # Cek apakah bagian pertama terlihat seperti UUID (hanya hex & underscore)
-        if re.match(r"^[0-9a-f_]+$", parts[0], re.IGNORECASE):
-            return "-".join(parts[1:])
+    # Pola single underscore
+    m = re.match(r'^[0-9a-f]{8}_[0-9a-f]{8}-(.+)$', stem, re.IGNORECASE)
+    if m:
+        return m.group(1)
 
-    # Tidak ada prefix UUID yang dikenali, kembalikan apa adanya
-    return stem
+    # Pola standard UUID (8-4-4-4-12)
+    m = re.match(
+        r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-(.+)$',
+        stem, re.IGNORECASE
+    )
+    if m:
+        return m.group(1)
+
+    return stem  # tidak ada prefix, kembalikan apa adanya
 
 
 def collect_images(images_dir):
-    """Kumpulkan semua file gambar beserta normalized stem-nya."""
-    image_map = {}  # normalized_stem -> (original_path, ext)
+    """Kumpulkan image: normalized_stem -> (original_path, ext)"""
+    result = {}
     for fname in os.listdir(images_dir):
         stem, ext = os.path.splitext(fname)
         if ext.lower() not in IMAGE_EXTENSIONS:
             continue
         norm = normalize_stem(stem)
-        original_path = os.path.join(images_dir, fname)
-        if norm in image_map:
-            print(f"  [PERINGATAN] Duplikat normalized stem '{norm}': "
-                  f"'{image_map[norm][0]}' vs '{original_path}'")
-        image_map[norm] = (original_path, ext)
-    return image_map
+        path = os.path.join(images_dir, fname)
+        if norm in result:
+            print(f"  [DUPLIKAT IMAGE] '{norm}': '{result[norm][0]}' vs '{path}'")
+        result[norm] = (path, ext)
+    return result
 
 
 def collect_labels(labels_dir):
-    """Kumpulkan semua file label beserta cleaned stem-nya."""
-    label_map = {}  # cleaned_stem -> original_path
+    """Kumpulkan label: cleaned_stem -> original_path"""
+    result = {}
     for fname in os.listdir(labels_dir):
         stem, ext = os.path.splitext(fname)
         if ext.lower() != ".txt":
             continue
         cleaned = strip_uuid_prefix(stem)
-        original_path = os.path.join(labels_dir, fname)
-        if cleaned in label_map:
-            print(f"  [PERINGATAN] Duplikat cleaned stem '{cleaned}': "
-                  f"'{label_map[cleaned]}' vs '{original_path}'")
-        label_map[cleaned] = original_path
-    return label_map
+        path = os.path.join(labels_dir, fname)
+        if cleaned in result:
+            print(f"  [DUPLIKAT LABEL] '{cleaned}': '{result[cleaned]}' vs '{path}'")
+        result[cleaned] = path
+    return result
+
+
+def split_train_val(matched_stems, val_ratio=0.2, seed=42):
+    """Split matched stems into train/val sets."""
+    import random
+    random.seed(seed)
+    stems = sorted(matched_stems)
+    random.shuffle(stems)
+    split_idx = max(1, int(len(stems) * val_ratio))
+    val = set(stems[:split_idx])
+    train = set(stems[split_idx:])
+    return train, val
 
 
 def main():
-    print("=" * 65)
+    print("=" * 70)
     print("  Fix Dataset Names - Label Studio YOLO Export")
-    print(f"  Mode: {'DRY RUN (tidak ada perubahan)' if DRY_RUN else 'RENAME SESUNGGUHNYA'}")
-    print("=" * 65)
+    print(f"  Mode: {'DRY RUN (tidak ada perubahan)' if DRY_RUN else 'AKTIF - file akan direname/disalin'}")
+    print("=" * 70)
 
-    if not os.path.isdir(IMAGES_DIR):
-        print(f"\n[ERROR] Folder images tidak ditemukan: {IMAGES_DIR}")
-        return
-    if not os.path.isdir(LABELS_DIR):
-        print(f"\n[ERROR] Folder labels tidak ditemukan: {LABELS_DIR}")
-        return
+    for d in [IMAGES_DIR, LABELS_DIR]:
+        if not os.path.isdir(d):
+            print(f"\n[ERROR] Folder tidak ditemukan: {d}")
+            return
 
-    print(f"\nImages dir : {IMAGES_DIR}")
-    print(f"Labels dir : {LABELS_DIR}\n")
+    print(f"\nImages : {IMAGES_DIR}")
+    print(f"Labels : {LABELS_DIR}")
+    print(f"Output : {OUTPUT_DIR}\n")
 
     image_map = collect_images(IMAGES_DIR)
     label_map = collect_labels(LABELS_DIR)
 
-    print(f"Ditemukan {len(image_map)} gambar (setelah normalisasi)")
-    print(f"Ditemukan {len(label_map)} label  (setelah strip UUID)\n")
+    print(f"Total gambar ditemukan : {len(image_map)}")
+    print(f"Total label ditemukan  : {len(label_map)}\n")
 
-    matched = 0
-    unmatched_images = []
-    unmatched_labels = []
+    matched    = set(image_map) & set(label_map)
+    img_only   = set(image_map) - set(label_map)
+    lbl_only   = set(label_map) - set(image_map)
 
-    rename_images = []  # list of (src, dst)
-    rename_labels = []
+    print(f"Pasangan COCOK (image+label) : {len(matched)}")
+    print(f"Image tanpa label             : {len(img_only)}")
+    print(f"Label tanpa image             : {len(lbl_only)}\n")
 
-    # Cari pasangan yang cocok
-    all_stems = set(image_map.keys()) | set(label_map.keys())
-    for stem in sorted(all_stems):
-        has_img = stem in image_map
-        has_lbl = stem in label_map
-
-        if has_img and has_lbl:
-            img_path, ext = image_map[stem]
-            lbl_path = label_map[stem]
-
-            img_new = os.path.join(IMAGES_DIR, stem + ext)
-            lbl_new = os.path.join(LABELS_DIR, stem + ".txt")
-
-            img_needs_rename = img_path != img_new
-            lbl_needs_rename = lbl_path != lbl_new
-
-            if img_needs_rename:
-                rename_images.append((img_path, img_new))
-            if lbl_needs_rename:
-                rename_labels.append((lbl_path, lbl_new))
-
-            matched += 1
-
-        elif has_img and not has_lbl:
-            unmatched_images.append(stem)
-        else:
-            unmatched_labels.append(stem)
-
-    # --- Tampilkan rencana rename ---
-    print(f"Pasangan cocok (image + label): {matched}")
-    print(f"Image tanpa label             : {len(unmatched_images)}")
-    print(f"Label tanpa image             : {len(unmatched_labels)}\n")
-
-    if rename_images:
-        print(f"[RENAME IMAGES] {len(rename_images)} file akan direname:")
-        for src, dst in rename_images[:20]:
-            print(f"  {os.path.basename(src):50s}  ->  {os.path.basename(dst)}")
-        if len(rename_images) > 20:
-            print(f"  ... dan {len(rename_images) - 20} file lainnya")
-        print()
-
-    if rename_labels:
-        print(f"[RENAME LABELS] {len(rename_labels)} file akan direname:")
-        for src, dst in rename_labels[:20]:
-            print(f"  {os.path.basename(src):60s}  ->  {os.path.basename(dst)}")
-        if len(rename_labels) > 20:
-            print(f"  ... dan {len(rename_labels) - 20} file lainnya")
-        print()
-
-    if unmatched_images:
-        print(f"[PERINGATAN] {len(unmatched_images)} image tidak punya label pasangan:")
-        for s in unmatched_images[:10]:
-            print(f"  {s}")
-        if len(unmatched_images) > 10:
-            print(f"  ... dan {len(unmatched_images) - 10} lainnya")
-        print()
-
-    if unmatched_labels:
-        print(f"[PERINGATAN] {len(unmatched_labels)} label tidak punya image pasangan:")
-        for s in unmatched_labels[:10]:
-            print(f"  {s}")
-        if len(unmatched_labels) > 10:
-            print(f"  ... dan {len(unmatched_labels) - 10} lainnya")
-        print()
-
-    # --- Eksekusi rename ---
-    if DRY_RUN:
-        print("=" * 65)
-        print("  DRY RUN selesai. Tidak ada file yang diubah.")
-        print("  Jika hasilnya sudah benar, ubah DRY_RUN = False")
-        print("  lalu jalankan script ini lagi.")
-        print("=" * 65)
+    if not matched:
+        print("[ERROR] Tidak ada pasangan yang cocok!")
+        print("Kemungkinan penyebab:")
+        print("  1. Gambar di-rename manual (000001, 000002, dst) sementara label")
+        print("     masih pakai nama asli (green_banana_0020, IMG_20260430, dst).")
+        print("  2. Solusi: gunakan folder 'images' dari export Label Studio langsung,")
+        print("     jangan di-rename manual sebelum dijalankan script ini.")
         return
 
-    # Rename images
+    train_stems, val_stems = split_train_val(matched)
+    print(f"Split -> Train: {len(train_stems)} | Val: {len(val_stems)}\n")
+
+    if img_only:
+        print(f"[INFO] {len(img_only)} gambar tidak punya label (akan diabaikan):")
+        for s in sorted(img_only)[:10]:
+            print(f"  {s}")
+        if len(img_only) > 10:
+            print(f"  ... dan {len(img_only)-10} lainnya")
+        print()
+
+    if lbl_only:
+        print(f"[INFO] {len(lbl_only)} label tidak punya gambar (akan diabaikan):")
+        for s in sorted(lbl_only)[:10]:
+            print(f"  {s}")
+        if len(lbl_only) > 10:
+            print(f"  ... dan {len(lbl_only)-10} lainnya")
+        print()
+
+    if DRY_RUN:
+        print("=" * 70)
+        print("  DRY RUN selesai. Tidak ada file yang diubah.")
+        print(f"  Jika sudah OK, ubah DRY_RUN = False lalu jalankan lagi.")
+        print("=" * 70)
+        return
+
+    # ---- Buat struktur output ----
+    for split in ("train", "val"):
+        for sub in ("images", "labels"):
+            Path(os.path.join(OUTPUT_DIR, split, sub)).mkdir(parents=True, exist_ok=True)
+
     errors = 0
-    for src, dst in rename_images:
-        if os.path.exists(dst) and src != dst:
-            print(f"  [SKIP] Tujuan sudah ada: {dst}")
-            continue
+
+    def copy_pair(stem, split):
+        nonlocal errors
+        img_src, ext = image_map[stem]
+        lbl_src = label_map[stem]
+        img_dst = os.path.join(OUTPUT_DIR, split, "images", stem + ext)
+        lbl_dst = os.path.join(OUTPUT_DIR, split, "labels", stem + ".txt")
         try:
-            shutil.move(src, dst)
+            shutil.copy2(img_src, img_dst)
+            shutil.copy2(lbl_src, lbl_dst)
         except Exception as e:
-            print(f"  [ERROR] {src} -> {dst}: {e}")
+            print(f"  [ERROR] {stem}: {e}")
             errors += 1
 
-    # Rename labels
-    for src, dst in rename_labels:
-        if os.path.exists(dst) and src != dst:
-            print(f"  [SKIP] Tujuan sudah ada: {dst}")
-            continue
-        try:
-            shutil.move(src, dst)
-        except Exception as e:
-            print(f"  [ERROR] {src} -> {dst}: {e}")
-            errors += 1
+    for stem in train_stems:
+        copy_pair(stem, "train")
+    for stem in val_stems:
+        copy_pair(stem, "val")
 
-    print("=" * 65)
+    # ---- Buat dataset.yaml ----
+    yaml_path = os.path.join(OUTPUT_DIR, "dataset.yaml")
+    yaml_content = f"""train: {os.path.join(OUTPUT_DIR, 'train', 'images')}
+val: {os.path.join(OUTPUT_DIR, 'val', 'images')}
+
+nc: 4
+
+names:
+  0: mentah
+  1: mengkal
+  2: matang
+  3: busuk
+"""
+    if not DRY_RUN:
+        with open(yaml_path, "w") as f:
+            f.write(yaml_content)
+
+    print("=" * 70)
     if errors == 0:
-        print(f"  Selesai! {len(rename_images)} image dan {len(rename_labels)} label berhasil direname.")
+        print(f"  SELESAI!")
+        print(f"  Train : {len(train_stems)} pasang -> {OUTPUT_DIR}/train/")
+        print(f"  Val   : {len(val_stems)} pasang  -> {OUTPUT_DIR}/val/")
+        print(f"  YAML  : {yaml_path}")
+        print()
+        print("  Langkah selanjutnya:")
+        print("  1. Upload folder OUTPUT_DIR ke Google Drive")
+        print("  2. Buka banana_training_colab.ipynb di Google Colab")
+        print("  3. Sesuaikan DATASET_PATH di notebook, lalu run all!")
     else:
         print(f"  Selesai dengan {errors} error. Cek log di atas.")
-    print("=" * 65)
+    print("=" * 70)
 
 
 if __name__ == "__main__":
