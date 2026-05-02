@@ -2,7 +2,12 @@
 YOLOv8 Model Handler - Singleton Pattern
 Load model once, reuse for all requests
 Model: YOLOv8n trained on banana ripeness dataset (4 classes)
-Classes: 0=Mentah, 1=Mengkal, 2=Matang, 3=Busuk
+
+NOTE: The training dataset had class IDs 0 and 3 accidentally swapped.
+The model internally learned: 0=Busuk, 1=Mengkal, 2=Matang, 3=Mentah.
+CLASS_NAMES in config is set to match this (Busuk,Mengkal,Matang,Mentah).
+The response class_id is remapped to the correct semantic order:
+  Mentah=0, Mengkal=1, Matang=2, Busuk=3
 """
 
 import torch
@@ -127,12 +132,25 @@ class YOLOv8Detector:
             print(f"Detection error: {str(e)}")
             raise
 
+    # Semantic class IDs exposed in the API response.
+    # These are fixed regardless of the model's internal index order.
+    SEMANTIC_CLASS_IDS = {
+        'Mentah':  0,
+        'Mengkal': 1,
+        'Matang':  2,
+        'Busuk':   3,
+    }
+
     def _parse_results(self, results):
         """
         Parse Ultralytics YOLO results into API-ready format.
 
         Returns normalized bbox coords (0..1) compatible with both
         Android CameraX overlay and web canvas rendering.
+
+        class_id in the response is the SEMANTIC id (Mentah=0 … Busuk=3),
+        not the model's raw internal index (which has IDs 0 and 3 swapped
+        due to a dataset preparation error).
         """
         detections  = []
         class_names = current_app.config['CLASS_NAMES']
@@ -165,9 +183,13 @@ class YOLOv8Detector:
                 else f"class_{cls_id}"
             )
 
+            # Return the semantic class_id so the mobile app always sees
+            # Mentah=0, Mengkal=1, Matang=2, Busuk=3 in the response.
+            semantic_id = self.SEMANTIC_CLASS_IDS.get(class_name, cls_id)
+
             detection = {
                 'class':      class_name,
-                'class_id':   cls_id,
+                'class_id':   semantic_id,
                 'confidence': round(float(conf), 3),
                 'bbox': {
                     'x_min':  int(x_min),

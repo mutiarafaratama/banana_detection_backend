@@ -39,7 +39,10 @@ class Config:
     IOU_THRESHOLD = float(os.getenv('IOU_THRESHOLD', 0.45))
     
     # Class Names
-    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Mentah,Mengkal,Matang,Busuk').split(',')
+    # NOTE: Model was trained with IDs 0 and 3 swapped in the dataset.
+    # The model visually learned: ID 0 = Busuk, ID 1 = Mengkal, ID 2 = Matang, ID 3 = Mentah.
+    # This mapping corrects that so the API response returns the right class names.
+    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Busuk,Mengkal,Matang,Mentah').split(',')
     
     @staticmethod
     def init_app(app):
