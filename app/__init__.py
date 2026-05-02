@@ -50,7 +50,18 @@ def create_app(config_class=Config):
             'service': 'Banana Detection Backend',
             'version': '2.0.0',
             'model': 'YOLOv8n',
+            'model_version': 'v2',
+            'yolo_version': 'YOLOv8n (Ultralytics)',
             'classes': ['Mentah', 'Mengkal', 'Matang', 'Busuk'],
+            'performance': {
+                'mAP50': 0.63,
+                'per_class': {
+                    'Mentah':  0.83,
+                    'Mengkal': 0.66,
+                    'Matang':  0.56,
+                    'Busuk':   0.46,
+                },
+            },
         }
     
     # Error handlers

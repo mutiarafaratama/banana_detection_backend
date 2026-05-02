@@ -48,6 +48,7 @@ def test():
     return jsonify({
         'status': 'success',
         'message': 'API is working!',
+        'model_info': _model_info_payload(),
         'endpoints': {
             'predict':       'POST /api/predict        (multipart: image, save?, device_id?, conf?, iou?, max_det?)',
             'detect_live':   'POST /api/detect-live    (json: image (b64), save?, device_id?, conf?, iou?, max_det?, img_size?)',
@@ -56,7 +57,54 @@ def test():
             'history_delete':'DELETE /api/history/<id>',
             'stats':         'GET  /api/stats',
             'stats_daily':   'GET  /api/stats/daily?days=7',
+            'model_info':    'GET  /api/model-info',
         },
+    }), 200
+
+
+def _model_info_payload():
+    """Return a dict with full model metadata and performance stats."""
+    return {
+        'name':            'Banana Ripeness Detector',
+        'architecture':    'YOLOv8n',
+        'yolo_version':    'YOLOv8n (Ultralytics)',
+        'model_version':   'v2',
+        'parameters':      '3M',
+        'model_size_mb':   5.9,
+        'training': {
+            'total_images':      1593,
+            'original_images':   670,
+            'oversampled_images': 923,
+            'epochs':            76,
+            'early_stopping':    True,
+            'val_images':        167,
+            'trained_on':        'Google Colab T4 GPU',
+            'training_time':     '~35 menit',
+        },
+        'classes': ['Mentah', 'Mengkal', 'Matang', 'Busuk'],
+        'performance': {
+            'mAP50':       0.63,
+            'mAP50_label': '63%',
+            'per_class': {
+                'Mentah':  {'mAP50': 0.83, 'label': '83%'},
+                'Mengkal': {'mAP50': 0.66, 'label': '66%'},
+                'Matang':  {'mAP50': 0.56, 'label': '56%'},
+                'Busuk':   {'mAP50': 0.46, 'label': '46%'},
+            },
+        },
+        'thresholds': {
+            'confidence': 0.5,
+            'iou':        0.45,
+        },
+    }
+
+
+@api_bp.route('/model-info', methods=['GET'])
+def model_info():
+    """Return model metadata, version, and per-class performance stats."""
+    return jsonify({
+        'status': 'success',
+        **_model_info_payload(),
     }), 200
 
 
