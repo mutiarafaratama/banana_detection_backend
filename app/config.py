@@ -39,10 +39,14 @@ class Config:
     IOU_THRESHOLD = float(os.getenv('IOU_THRESHOLD', 0.45))
     
     # Class Names
-    # NOTE: Model was trained with IDs 0 and 3 swapped in the dataset.
-    # The model visually learned: ID 0 = Busuk, ID 1 = Mengkal, ID 2 = Matang, ID 3 = Mentah.
-    # This mapping corrects that so the API response returns the right class names.
-    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Busuk,Mengkal,Matang,Mentah').split(',')
+    # NOTE: The training dataset had ALL four IDs shuffled from the intended order.
+    # What the model visually learned (internal → visual meaning):
+    #   ID 0 = Busuk   (dark/rotten)
+    #   ID 1 = Matang  (fully yellow/ripe)
+    #   ID 2 = Mengkal (half-yellow, semi-ripe)
+    #   ID 3 = Mentah  (green/raw)
+    # This mapping corrects all swaps so the API response returns the right class names.
+    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Busuk,Matang,Mengkal,Mentah').split(',')
     
     @staticmethod
     def init_app(app):
