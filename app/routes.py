@@ -30,7 +30,7 @@ from app.utils.descriptions import (
     enrich_detections,
     summarize_detections,
 )
-from app.models.yolov5_model import get_detector
+from app.models.yolov8_model import get_detector
 from app.services.image_processor import ImageProcessor
 from app.services.cloudinary_service import CloudinaryService
 from app.services.firebase_service import FirebaseService
