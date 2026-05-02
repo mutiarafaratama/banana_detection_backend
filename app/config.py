@@ -39,7 +39,7 @@ class Config:
     IOU_THRESHOLD = float(os.getenv('IOU_THRESHOLD', 0.45))
     
     # Class Names
-    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Mentah,Matang,Busuk').split(',')
+    CLASS_NAMES = os.getenv('CLASS_NAMES', 'Mentah,Mengkal,Matang,Busuk').split(',')
     
     @staticmethod
     def init_app(app):
