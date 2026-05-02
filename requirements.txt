@@ -1,18 +1,27 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 
+# Web framework
 Flask==2.3.3
 flask-cors==4.0.0
+werkzeug==2.3.7
 gunicorn==21.2.0
-opencv-python-headless
+
+# ML — YOLOv8n (CPU build for Railway/Docker deployment)
 torch==2.2.2+cpu
 torchvision==0.17.2+cpu
-numpy>=1.26.0
+ultralytics>=8.3.0
+
+# Image processing
+opencv-python-headless==4.9.0.80
 Pillow>=10.2.0
-ultralytics>=8.1.0
+numpy>=1.26.0,<2.0.0
+
+# Cloud services
 cloudinary==1.33.0
 firebase-admin==6.2.0
+
+# Utilities
 requests==2.31.0
 python-dotenv==1.0.0
 scikit-image>=0.22.0
 matplotlib>=3.8.0
-werkzeug==2.3.7

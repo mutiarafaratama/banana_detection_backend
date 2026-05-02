@@ -1,36 +1,70 @@
 """
-Static descriptions per banana quality class.
+Static descriptions per banana ripeness class.
 Returned alongside detection results so the mobile app can render
 detail cards without hard-coding text on the client side.
+
+Classes (must match training label order):
+  0 = Mentah  (raw/unripe)
+  1 = Mengkal (half-ripe)
+  2 = Matang  (ripe)
+  3 = Busuk   (overripe/rotten)
 """
 
 QUALITY_DESCRIPTIONS = {
     'Mentah': {
-        'title': 'Pisang Belum Matang',
+        'title': 'Pisang Mentah',
         'description': (
             'Pisang masih dalam tahap mentah. Warna hijau mendominasi '
             'dengan tekstur yang keras dan kadar pati tinggi.'
         ),
         'characteristics': [
-            'Warna dominan hijau',
-            'Tekstur keras dan kaku',
-            'Kadar pati tinggi, gula rendah',
+            'Warna dominan hijau pekat',
+            'Tekstur sangat keras dan kaku',
+            'Kadar pati tinggi, gula sangat rendah',
             'Tidak cocok dikonsumsi langsung',
         ],
         'recommendations': [
-            'Tunggu 2-3 hari untuk mencapai kematangan optimal',
+            'Tunggu 4-6 hari untuk mencapai kematangan optimal',
             'Simpan di suhu ruangan (25-30°C)',
             'Hindari paparan sinar matahari langsung',
-            'Cocok untuk dimasak / digoreng / direbus',
+            'Cocok untuk dimasak, digoreng, atau direbus',
         ],
-        'ripening_time': '2-3 hari',
+        'ripening_time': '4-6 hari',
         'storage_tips': 'Simpan di tempat teduh, suhu ruangan',
         'health_benefits': [
             'Resistant starch baik untuk pencernaan',
             'Kadar gula rendah, cocok untuk diet',
             'Kaya vitamin B6 dan kalium',
         ],
-        'color_hex': '#7CB342',
+        'color_hex': '#388E3C',
+    },
+    'Mengkal': {
+        'title': 'Pisang Mengkal',
+        'description': (
+            'Pisang setengah matang. Warna hijau kekuningan dengan '
+            'tekstur mulai melunak. Sudah bisa dikonsumsi namun '
+            'rasa belum optimal.'
+        ),
+        'characteristics': [
+            'Warna hijau kekuningan',
+            'Tekstur mulai melunak',
+            'Kadar pati menurun, gula mulai terbentuk',
+            'Rasa sedikit sepat',
+        ],
+        'recommendations': [
+            'Tunggu 1-2 hari lagi untuk rasa optimal',
+            'Simpan di suhu ruangan',
+            'Hindari kulkas agar proses pematangan berlanjut',
+            'Bisa dikonsumsi langsung jika menyukai rasa yang tidak terlalu manis',
+        ],
+        'ripening_time': '1-2 hari',
+        'storage_tips': 'Simpan di suhu ruangan, jangan masukkan kulkas',
+        'health_benefits': [
+            'Kandungan nutrisi seimbang antara pati dan gula',
+            'Baik untuk kontrol gula darah',
+            'Kaya serat dan kalium',
+        ],
+        'color_hex': '#8BC34A',
     },
     'Matang': {
         'title': 'Pisang Matang Sempurna',
@@ -64,7 +98,7 @@ QUALITY_DESCRIPTIONS = {
         'title': 'Pisang Terlalu Matang / Busuk',
         'description': (
             'Pisang sudah melewati masa kematangan optimal. '
-            'Banyak bercak coklat / hitam dan tekstur sangat lembek.'
+            'Banyak bercak coklat/hitam dan tekstur sangat lembek.'
         ),
         'characteristics': [
             'Warna coklat kehitaman dominan',
@@ -79,7 +113,7 @@ QUALITY_DESCRIPTIONS = {
             'Jika sudah berbau busuk, sebaiknya dibuang',
         ],
         'ripening_time': 'Lewat masa optimal',
-        'storage_tips': 'Gunakan segera atau buang',
+        'storage_tips': 'Gunakan segera untuk baking atau buang',
         'health_benefits': [
             'Masih mengandung nutrisi jika belum busuk total',
             'Kadar antioksidan cenderung meningkat',
@@ -99,19 +133,19 @@ def get_quality_description(quality_class):
         return QUALITY_DESCRIPTIONS[quality_class]
 
     return {
-        'title': quality_class,
-        'description': 'Tidak ada deskripsi tersedia untuk kelas ini.',
+        'title':           quality_class,
+        'description':     'Tidak ada deskripsi tersedia untuk kelas ini.',
         'characteristics': [],
         'recommendations': [],
-        'ripening_time': '-',
-        'storage_tips': '-',
+        'ripening_time':   '-',
+        'storage_tips':    '-',
         'health_benefits': [],
-        'color_hex': '#9E9E9E',
+        'color_hex':       '#9E9E9E',
     }
 
 
 def confidence_label(confidence):
-    """Convert numeric confidence into a coarse label."""
+    """Convert numeric confidence into a human-readable label."""
     if confidence >= 0.85:
         return 'Sangat Yakin'
     if confidence >= 0.7:
@@ -127,8 +161,8 @@ def enrich_detection(detection):
     Mutates and returns the input for convenience.
     """
     quality = detection.get('class', '')
-    detection['description'] = get_quality_description(quality)
-    detection['confidence_label'] = confidence_label(detection.get('confidence', 0))
+    detection['description']       = get_quality_description(quality)
+    detection['confidence_label']  = confidence_label(detection.get('confidence', 0))
     return detection
 
 
@@ -139,9 +173,9 @@ def enrich_detections(detections):
 
 def summarize_detections(detections):
     """
-    Build a small summary block useful for live-detection HUD or list header.
+    Build a summary block for live-detection HUD or list header.
     """
-    by_class = {}
+    by_class    = {}
     confidences = []
     for d in detections:
         cls = d.get('class', 'Unknown')
@@ -153,8 +187,8 @@ def summarize_detections(detections):
         dominant_class = max(by_class.items(), key=lambda kv: kv[1])[0]
 
     return {
-        'total': len(detections),
-        'by_class': by_class,
-        'dominant_class': dominant_class,
-        'avg_confidence': round(sum(confidences) / len(confidences), 3) if confidences else 0,
+        'total':           len(detections),
+        'by_class':        by_class,
+        'dominant_class':  dominant_class,
+        'avg_confidence':  round(sum(confidences) / len(confidences), 3) if confidences else 0,
     }

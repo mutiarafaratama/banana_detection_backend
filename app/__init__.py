@@ -48,7 +48,9 @@ def create_app(config_class=Config):
         return {
             'status': 'running',
             'service': 'Banana Detection Backend',
-            'version': '1.0.0'
+            'version': '2.0.0',
+            'model': 'YOLOv8n',
+            'classes': ['Mentah', 'Mengkal', 'Matang', 'Busuk'],
         }
     
     # Error handlers

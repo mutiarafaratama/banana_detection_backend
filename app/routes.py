@@ -241,7 +241,7 @@ def _persist(detections, summary, inference_ms, image_url, source, device_id, ex
         'dominant_class': summary['dominant_class'],
         'avg_confidence': summary['avg_confidence'],
         'inference_time_ms': inference_ms,
-        'model_version': 'v1',
+        'model_version': 'v2',
     }
     if extras:
         payload.update(extras)
@@ -495,7 +495,7 @@ def get_history():
       limit       int (1..100, default 20)
       cursor      ISO timestamp from previous page's `next_cursor`
       device_id   filter to one device (also reads X-Device-Id header)
-      class       filter by dominant_class (Mentah / Matang / Busuk)
+      class       filter by dominant_class (Mentah / Mengkal / Matang / Busuk)
       mine        "1" to use caller's device_id automatically
     """
     limit = parse_int(request.args.get('limit'), 20)

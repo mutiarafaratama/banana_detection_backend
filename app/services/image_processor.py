@@ -1,6 +1,6 @@
 """
 Image Preprocessing with OpenCV
-Prepare images for YOLOv5 inference
+Prepare images for YOLOv8 inference
 """
 
 import cv2
@@ -41,7 +41,7 @@ class ImageProcessor:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
 
-            # No need to resize - YOLOv5 handles this
+            # No need to resize - YOLOv8 handles this internally
             return image
 
         except Exception as e:
