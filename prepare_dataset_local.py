@@ -35,9 +35,10 @@ IMAGES_DIR = r"D:\banana_dataset\images"   # folder images kamu
 LABELS_DIR = r"D:\banana_dataset\labels"   # folder labels dari Label Studio
 OUTPUT_DIR = r"D:\banana_dataset_colab"    # folder hasil (akan dibuat otomatis)
 
+# *** GANTI DI SINI ***
 # True  = preview saja, TIDAK ada file yang diubah
-# False = benar-benar proses dan salin file
-DRY_RUN = True
+# False = benar-benar proses dan salin file ke OUTPUT_DIR
+DRY_RUN = False
 
 VAL_RATIO   = 0.2   # 20% untuk validasi, 80% untuk train
 RANDOM_SEED = 42
