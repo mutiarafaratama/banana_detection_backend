@@ -51,6 +51,11 @@ datasets/labels/
 datasets/coco8/
 datasets/*.cache
 
+# Dataset lokal (dari Label Studio / persiapan training)
+banana_dataset/
+banana_dataset_colab/
+banana_dataset_*/
+
 # ===== File besar lain yang tidak butuh di server =====
 attached_assets/
 mobile_fixes/
